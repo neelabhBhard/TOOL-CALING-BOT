@@ -71,3 +71,4 @@ def get_current_time(timezone: str = "EST") -> str:
         return f"Error: Unknown timezone '{timezone}'. Please use valid timezones like 'UTC', 'US/Eastern', 'Asia/Tokyo', etc."
     except Exception as e:
         return f"Error: Unable to get time for timezone '{timezone}'. {str(e)}"
+

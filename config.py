@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.getenv(ATHROPIC_KEY)
+ANTHROPIC_API_KEY = os.getenv("ATHROPIC_KEY")
 
 USE_OPENAI = False  # Set to False if using Anthropic
 MODEL_NAME = "gpt-4" if USE_OPENAI else "claude-3-sonnet-20240229"

@@ -29,12 +29,12 @@ def calculator_tool(expression: str) -> str:
         expression = expression.replace('log', 'math.log')
         
         # This will not let the user access dangeroud builtin files like eval for security purpose.
-        safe_dict = {
+        secure_dict = {
             "__builtins__": {},
             "math": math
         }
         
-        result = eval(expression, safe_dict)
+        result = eval(expression, secure_dict)
         
         return f"Result: {result}"
         
@@ -45,4 +45,29 @@ def calculator_tool(expression: str) -> str:
     except Exception as e:
         return f"Error: Invalid mathematical expression. Please check your syntax."
     
+def get_current_time(timezone: str = "EST") -> str:
+    """
+    Get current time in specified timezone.
     
+    Args:
+        timezone: Timezone string like "UTC", "US/Eastern", "Asia/Tokyo"
+    
+    Returns:
+        Formatted time string with timezone info
+    """
+    try:
+        # Get the timezone object
+        tz = pytz.timezone(timezone)
+        
+        # Get current time in that timezone
+        current_time = datetime.now(tz)
+        
+        # Format the time in a readable way
+        formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S %Z")
+        
+        return f"Current time in {timezone}: {formatted_time}"
+        
+    except pytz.exceptions.UnknownTimeZoneError:
+        return f"Error: Unknown timezone '{timezone}'. Please use valid timezones like 'UTC', 'US/Eastern', 'Asia/Tokyo', etc."
+    except Exception as e:
+        return f"Error: Unable to get time for timezone '{timezone}'. {str(e)}"

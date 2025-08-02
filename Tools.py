@@ -7,6 +7,10 @@ import requests
 import json
 from config import MAX_SEARCH_RESULTS
 
+
+import requests
+from urllib.parse import quote
+
 def calculator_tool(expression: str) -> str:
     """
     Safely evaluate mathematical expressions.
@@ -93,93 +97,128 @@ def get_current_time(timezone: str = "EST") -> str:
     except Exception as e:
         return f"Error: Unable to get time for timezone '{timezone}'. {str(e)}"
 
-from urllib.parse import quote
-
 def web_search(query: str, num_results: int = 3) -> str:
     """
     Search the web and return top results.
-    
+   
     Args:
         query: Search terms
         num_results: Number of results to return (1-5)
-    
+   
     Returns:
-        Formatted string with search results
+         str: Formatted search results or error message.
     """
+ 
+    # Input validation
     if not query or not query.strip():
         return "Error: Empty search query provided"
-    
-    # Validate num_results
+   
+    # Validate and normalize num_results parameter
     if not isinstance(num_results, int) or num_results < 1 or num_results > 5:
         num_results = 3
-    
+   
+    # Clean and prepare query
+    clean_query = query.strip()
+   
     try:
-        # Use DuckDuckGo Instant Answer API with proper encoding
-        encoded_query = quote(query.strip())
-        url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1&skip_disambig=1"
+        # Try multiple query variations for better results
+        queries_to_try = [
+            clean_query,
+            clean_query.replace("What is", "").replace("what is", "").strip(),
+            "artificial intelligence" if "ai" in clean_query.lower() else clean_query
+        ]
         
-        # Add User-Agent header to mimic a real browser
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        data = response.json()
-        results = []
-        
-        # Check for instant answer
-        if data.get('Answer') and data['Answer'].strip():
-            results.append(f" Answer: {data['Answer']}")
-            if data.get('AnswerType'):
-                results.append(f"  Type: {data['AnswerType']}")
-        
-        # Check for abstract (Wikipedia-style results)
-        if data.get('Abstract') and data['Abstract'].strip():
-            abstract = data['Abstract'][:300] + "..." if len(data['Abstract']) > 300 else data['Abstract']
-            results.append(f" Summary: {abstract}")
-            if data.get('AbstractSource'):
-                results.append(f"  Source: {data['AbstractSource']}")
-            if data.get('AbstractURL'):
-                results.append(f"  URL: {data['AbstractURL']}")
-        
-        # Check for definition
-        if data.get('Definition') and data['Definition'].strip():
-            definition = data['Definition'][:200] + "..." if len(data['Definition']) > 200 else data['Definition']
-            results.append(f"Definition: {definition}")
-            if data.get('DefinitionSource'):
-                results.append(f"   Source: {data['DefinitionSource']}")
-            if data.get('DefinitionURL'):
-                results.append(f"    URL: {data['DefinitionURL']}")
-        
-        # Check for related topics
-        if data.get('RelatedTopics') and isinstance(data['RelatedTopics'], list):
-            added_topics = 0
-            for topic in data['RelatedTopics']:
-                if added_topics >= num_results:
-                    break
-                    
-                if isinstance(topic, dict) and topic.get('Text'):
-                    text = topic['Text'].strip()
-                    if text:
-                        # Limit text length and clean it up
-                        clean_text = text[:150] + "..." if len(text) > 150 else text
-                        results.append(f"🔍 Related: {clean_text}")
-                        if topic.get('FirstURL'):
-                            results.append(f"    URL: {topic['FirstURL']}")
-                        added_topics += 1
-        
-        # Format final results
-        if results:
-            header = f"Search results for '{query}':\n"
-            return header + "\n".join(results)
-        else:
-            return f"No results found for '{query}'. DuckDuckGo's API may not have information on this topic. Try:\n• More specific search terms\n• General topics instead of recent news\n• Company or product names"
+        for current_query in queries_to_try:
+            # Skip empty queries
+            if not current_query.strip():
+                continue
+                
+            # Encode query for URL safety
+            encoded_query = quote(current_query)
+           
+            # DuckDuckGo Instant Answer API endpoint
+            url = f"https://api.duckduckgo.com/?q={encoded_query}&format=json&no_html=1&skip_disambig=1"
+           
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+           
+            # Make the API request
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+           
+            # Parse JSON response
+            data = response.json()
+            results = []
+           
+            # Extract from Answer field
+            if data.get('Answer') and data.get('Answer').strip():
+                results.append(f"Answer: {data['Answer']}")
+                if data.get('AnswerType'):
+                    results.append(f"   Source: {data.get('AnswerType', 'DuckDuckGo')}")
+           
+            # Extract from Abstract field
+            if data.get('Abstract') and data.get('Abstract').strip():
+                if not (".ai is the Internet country code" in data['Abstract'] or "Anguilla" in data['Abstract']):
+                    results.append(f"Summary: {data['Abstract']}")
+                    if data.get('AbstractSource'):
+                        results.append(f"   Source: {data['AbstractSource']}")
+                        if data.get('AbstractURL'):
+                            results.append(f"   URL: {data['AbstractURL']}")
             
+            # Extract from AbstractText field
+            if data.get('AbstractText') and data.get('AbstractText').strip():
+                if not (".ai is" in data['AbstractText'] or "Anguilla" in data['AbstractText']):
+                    results.append(f"Info: {data['AbstractText']}")
+           
+            # Extract from Definition field
+            if data.get('Definition') and data.get('Definition').strip():
+                results.append(f"Definition: {data['Definition']}")
+                if data.get('DefinitionSource'):
+                    results.append(f"   Source: {data['DefinitionSource']}")
+            
+            # Extract from Infobox
+            if data.get('Infobox') and isinstance(data['Infobox'], dict):
+                for key, value in data['Infobox'].items():
+                    if value and str(value).strip() and len(str(value)) > 10:
+                        results.append(f"{key}: {value}")
+            
+            # Extract from Results array
+            if data.get('Results') and isinstance(data['Results'], list):
+                for i, result in enumerate(data['Results'][:num_results]):
+                    if isinstance(result, dict):
+                        if result.get('Text'):
+                            results.append(f"Result {i+1}: {result['Text']}")
+                        if result.get('FirstURL'):
+                            results.append(f"   URL: {result['FirstURL']}")
+           
+            # Extract from RelatedTopics
+            if data.get('RelatedTopics') and len(results) < 3:
+                topics_added = 0
+                for topic in data['RelatedTopics']:
+                    if topics_added >= 2:
+                        break
+                    if isinstance(topic, dict) and topic.get('Text'):
+                        topic_text = topic['Text']
+                        if not any(skip_word in topic_text.lower() for skip_word in ["anguilla", "country code", "domain", ".ai"]):
+                            if len(topic_text) > 200:
+                                topic_text = topic_text[:200] + "..."
+                            results.append(f"Related: {topic_text}")
+                            if topic.get('FirstURL'):
+                                results.append(f"   URL: {topic['FirstURL']}")
+                            topics_added += 1
+            
+            # If we got results, return them
+            if results:
+                header = f"Search results for '{clean_query}':\n"
+                return header + "\n".join(results)
+        
+        # If all attempts failed, return simple message
+        return f"No results found for '{clean_query}'. DuckDuckGo's API did not return information for this topic. Try rephrasing your search with more specific terms."
+           
     except requests.exceptions.Timeout:
         return "Error: Search request timed out. Please try again."
     except requests.exceptions.RequestException as e:
         return f"Error: Network error during search - {str(e)}"
     except Exception as e:
-        return f"Error searching for '{query}': {str(e)}"
+        return f"Error searching for '{clean_query}': {str(e)}"

@@ -148,7 +148,7 @@ def handle_tool_calls(client, messages, response, tools):
                 tool_input = content_block.input
                 tool_use_id = content_block.id
                 
-                print(f"🔧 Using tool: {tool_name}")
+                print(f"Using tool: {tool_name}")
                 
                 # Execute the appropriate tool
                 if tool_name == "calculator_tool":
@@ -159,7 +159,9 @@ def handle_tool_calls(client, messages, response, tools):
                 elif tool_name == "web_search":
                     query = tool_input["query"]
                     num_results = tool_input.get("num_results", 3)
+                    print(f"Searching for: '{query}'")
                     result = web_search(query, num_results)
+                    print(f"Search completed. Result length: {len(result)} characters")
                 else:
                     result = f"Error: Unknown tool '{tool_name}'"
                 
@@ -175,70 +177,57 @@ def handle_tool_calls(client, messages, response, tools):
             "role": "user",
             "content": tool_results
         })
+
         
         # Get final response from Claude
         final_response = client.messages.create(
             model=MODEL_NAME,
-            max_tokens=1000,
+            max_tokens=1500,
             messages=messages,
             tools=tools
         )
         
-        return final_response.content[0].text
+        # Handle potential recursive tool calls
+        if final_response.stop_reason == "tool_use":
+            print("Claude wants to use additional tools...")
+            return handle_tool_calls(client, messages, final_response, tools)
+        else:
+            # Return the final response
+            if final_response.content and len(final_response.content) > 0:
+                return final_response.content[0].text
+            else:
+                return "I received the search results but couldn't generate a proper response."
         
     except Exception as e:
         print(f"Error handling tool calls: {e}")
-        return "Sorry, I encountered an error while using tools."
+        return "Sorry, I encountered an error while processing the tool results."
 
-def test_bot():
+def test_tools_individually():
     """
-    Test function to verify all tools work correctly
+    Test each tool individually to verify they work
     """
-    print("🧪 Testing all tools...\n")
+    print("Testing tools individually...\n")
     
     # Test Calculator
-    print("=== Testing Calculator Tool ===")
-    test_expressions = [
-        "2 + 3 * 4",
-        "sqrt(144)",
-        "15% of 847",
-        "sin(0)",
-        "2 / 0"  # Test error handling
-    ]
+    print("=== Testing Calculator ===")
+    calc_result = calculator_tool("2 + 3 * 4")
+    print(f"Calculator result: {calc_result}")
     
-    for expr in test_expressions:
-        result = calculator_tool(expr)
-        print(f"calculator_tool('{expr}') -> {result}")
+    # Test Time
+    print("\n=== Testing Time ===")
+    time_result = get_current_time("UTC")
+    print(f"Time result: {time_result}")
     
-    print("\n=== Testing Time Tool ===")
-    test_timezones = [
-        "UTC",
-        "US/Eastern", 
-        "Asia/Tokyo",
-        "Europe/London",
-        "InvalidZone"  # Test error handling
-    ]
+    # Test Search
+    print("\n=== Testing Search ===")
+    search_result = web_search("Python programming", 2)
+    print(f"Search result: {search_result[:200]}...")
     
-    for tz in test_timezones:
-        result = get_current_time(tz)
-        print(f"get_current_time('{tz}') -> {result}")
-    
-    print("\n=== Testing Search Tool ===")
-    test_queries = [
-        ("Python programming", 2),
-        ("artificial intelligence news", 3),
-        ("", 2)  # Test error handling
-    ]
-    
-    for query, num in test_queries:
-        result = web_search(query, num)
-        print(f"web_search('{query}', {num}) -> {result[:100]}...")
-    
-    print("\nTool testing complete!\n")
+    print("\nTool testing complete!")
 
 if __name__ == "__main__":
-    # Uncomment the line below to run tests
-    # test_bot()
+    # Uncomment to test tools individually first
+    # test_tools_individually()
     
     # Run the main chat bot
     main()

@@ -1,11 +1,11 @@
-# main.py
+
 import anthropic
 from config import ANTHROPIC_API_KEY, USE_OPENAI, MODEL_NAME
 from Tools import calculator_tool, get_current_time, web_search
 import json
 
 def main():
-    # Initialize the Anthropic client
+    # Initializing the Anthropic client
     if not ANTHROPIC_API_KEY:
         print("Error: ANTHROPIC_API_KEY not found. Please check your config.py or .env file.")
         return
@@ -19,7 +19,7 @@ def main():
     print("• Web searches")
     print("\nType 'quit' to exit\n")
     
-    # Store conversation history
+    
     messages = []
     
     while True:
@@ -34,7 +34,7 @@ def main():
             if not user_input:
                 continue
             
-            # Add user message to history
+            # Adding memory
             messages.append({"role": "user", "content": user_input})
             
             # Get response from Claude with tools
@@ -59,7 +59,7 @@ def get_claude_response(client, messages):
     Get response from Claude, handling tool calls if needed
     """
     try:
-        # Define tool schemas for Claude
+        # Define tool schemas
         tools = [
             {
                 "name": "calculator_tool",
@@ -109,7 +109,7 @@ def get_claude_response(client, messages):
             }
         ]
         
-        # Make initial request to Claude with tools
+        # Making initial request for tools
         response = client.messages.create(
             model=MODEL_NAME,
             max_tokens=1000,
@@ -117,11 +117,11 @@ def get_claude_response(client, messages):
             tools=tools
         )
         
-        # Check if Claude wants to use tools
+        # Checking if Claude wants to use tools
         if response.stop_reason == "tool_use":
             return handle_tool_calls(client, messages, response, tools)
         else:
-            # No tools needed, return regular response
+            
             return response.content[0].text
             
     except Exception as e:
@@ -133,13 +133,13 @@ def handle_tool_calls(client, messages, response, tools):
     Handle tool calls from Claude
     """
     try:
-        # Add Claude's response (with tool calls) to conversation
+        
         messages.append({
             "role": "assistant", 
             "content": response.content
         })
         
-        # Process each tool call
+        # for Processing each tool call
         tool_results = []
         
         for content_block in response.content:
@@ -150,7 +150,7 @@ def handle_tool_calls(client, messages, response, tools):
                 
                 print(f"Using tool: {tool_name}")
                 
-                # Execute the appropriate tool
+                # Logic to Call the right tool
                 if tool_name == "calculator_tool":
                     result = calculator_tool(tool_input["expression"])
                 elif tool_name == "get_current_time":
@@ -172,14 +172,14 @@ def handle_tool_calls(client, messages, response, tools):
                     "content": result
                 })
         
-        # Add tool results to conversation
+        # Add the tool results to conversation
         messages.append({
             "role": "user",
             "content": tool_results
         })
 
         
-        # Get final response from Claude
+        # Get  response from Claude
         final_response = client.messages.create(
             model=MODEL_NAME,
             max_tokens=1500,
@@ -187,7 +187,7 @@ def handle_tool_calls(client, messages, response, tools):
             tools=tools
         )
         
-        # Handle potential recursive tool calls
+        # Handle tool calls
         if final_response.stop_reason == "tool_use":
             print("Claude wants to use additional tools...")
             return handle_tool_calls(client, messages, final_response, tools)
@@ -208,26 +208,24 @@ def test_tools_individually():
     """
     print("Testing tools individually...\n")
     
-    # Test Calculator
-    print("=== Testing Calculator ===")
+    # To test calculator
+    print("Testing Calculator")
     calc_result = calculator_tool("2 + 3 * 4")
     print(f"Calculator result: {calc_result}")
     
-    # Test Time
-    print("\n=== Testing Time ===")
+    # Test test Time
+    print("\nTesting Time")
     time_result = get_current_time("UTC")
     print(f"Time result: {time_result}")
     
-    # Test Search
-    print("\n=== Testing Search ===")
+    # Test test Search
+    print("\nTesting Search")
     search_result = web_search("Python programming", 2)
     print(f"Search result: {search_result[:200]}...")
     
     print("\nTool testing complete!")
 
 if __name__ == "__main__":
-    # Uncomment to test tools individually first
-    # test_tools_individually()
     
     # Run the main chat bot
     main()

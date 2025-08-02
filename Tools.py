@@ -28,22 +28,20 @@ def calculator_tool(expression: str) -> str:
         if not expression:
             return "Error: Empty expression provided."
         
-        # Handle percentage calculations - this is the fix!
+        # Handle percentage calculations
         if '%' in expression:
-            # Convert "15% of 847" to "15/100 * 847"
             expression = expression.replace('%', '/100')
             expression = expression.replace(' of ', ' * ')
-            # Also handle "15% * 847" format
             expression = expression.replace('/100 * ', '/100 * ')
         
-        # Helps the code understand math expression
+        #Error handling to make sure code understands what to execute after user inputs
         expression = expression.replace('sqrt', 'math.sqrt')
         expression = expression.replace('sin', 'math.sin')
         expression = expression.replace('cos', 'math.cos')
         expression = expression.replace('tan', 'math.tan')
         expression = expression.replace('log', 'math.log')
         
-        # This will not let the user access dangerous builtin files like eval for security purpose.
+        # To not let user use dangerous functions like "eval".
         secure_dict = {
             "__builtins__": {},
             "math": math,
@@ -55,9 +53,9 @@ def calculator_tool(expression: str) -> str:
         
         result = eval(expression, secure_dict)
         
-        # Round the result if it's a float with many decimal places
+        # Rounding the result if it's a float with many decimal places
         if isinstance(result, float):
-            result = round(result, 6)  # Round to 6 decimal places
+            result = round(result, 6) 
         
         return f"Result: {result}"
         
@@ -81,13 +79,13 @@ def get_current_time(timezone: str = "EST") -> str:
         Formatted time string with timezone info
     """
     try:
-        # Get the timezone object
+        # Getting the timezone object
         tz = pytz.timezone(timezone)
         
-        # Get current time in that timezone
+        # Getting current time in that timezone
         current_time = datetime.now(tz)
         
-        # Format the time in a readable way
+        # Formating the time in a readable way
         formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S %Z")
         
         return f"Current time in {timezone}: {formatted_time}"
@@ -109,11 +107,11 @@ def web_search(query: str, num_results: int = 3) -> str:
          str: Formatted search results or error message.
     """
  
-    # Input validation
+    # This is Input validation
     if not query or not query.strip():
         return "Error: Empty search query provided"
    
-    # Validate and normalize num_results parameter
+    # Validating and normalizing num_results parameters
     if not isinstance(num_results, int) or num_results < 1 or num_results > 5:
         num_results = 3
    
@@ -121,7 +119,7 @@ def web_search(query: str, num_results: int = 3) -> str:
     clean_query = query.strip()
    
     try:
-        # Try multiple query variations for better results
+        # This is to Try multiple query variations for better results
         queries_to_try = [
             clean_query,
             clean_query.replace("What is", "").replace("what is", "").strip(),
@@ -143,21 +141,21 @@ def web_search(query: str, num_results: int = 3) -> str:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
            
-            # Make the API request
+            # Making the API request
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
            
-            # Parse JSON response
+            # To parse the Json Response.
             data = response.json()
             results = []
            
-            # Extract from Answer field
+            # Extracting from Answer field
             if data.get('Answer') and data.get('Answer').strip():
                 results.append(f"Answer: {data['Answer']}")
                 if data.get('AnswerType'):
                     results.append(f"   Source: {data.get('AnswerType', 'DuckDuckGo')}")
            
-            # Extract from Abstract field
+            # Extracting from Abstract field
             if data.get('Abstract') and data.get('Abstract').strip():
                 if not (".ai is the Internet country code" in data['Abstract'] or "Anguilla" in data['Abstract']):
                     results.append(f"Summary: {data['Abstract']}")
@@ -166,24 +164,24 @@ def web_search(query: str, num_results: int = 3) -> str:
                         if data.get('AbstractURL'):
                             results.append(f"   URL: {data['AbstractURL']}")
             
-            # Extract from AbstractText field
+            # Extracting from the AbstractText field
             if data.get('AbstractText') and data.get('AbstractText').strip():
                 if not (".ai is" in data['AbstractText'] or "Anguilla" in data['AbstractText']):
                     results.append(f"Info: {data['AbstractText']}")
            
-            # Extract from Definition field
+            # Extracting from the Definition field
             if data.get('Definition') and data.get('Definition').strip():
                 results.append(f"Definition: {data['Definition']}")
                 if data.get('DefinitionSource'):
                     results.append(f"   Source: {data['DefinitionSource']}")
             
-            # Extract from Infobox
+            # Extracting from the Infobox
             if data.get('Infobox') and isinstance(data['Infobox'], dict):
                 for key, value in data['Infobox'].items():
                     if value and str(value).strip() and len(str(value)) > 10:
                         results.append(f"{key}: {value}")
             
-            # Extract from Results array
+            # Extract from Array of results
             if data.get('Results') and isinstance(data['Results'], list):
                 for i, result in enumerate(data['Results'][:num_results]):
                     if isinstance(result, dict):
@@ -192,7 +190,7 @@ def web_search(query: str, num_results: int = 3) -> str:
                         if result.get('FirstURL'):
                             results.append(f"   URL: {result['FirstURL']}")
            
-            # Extract from RelatedTopics
+            # Extracting data from related topic as search query
             if data.get('RelatedTopics') and len(results) < 3:
                 topics_added = 0
                 for topic in data['RelatedTopics']:
@@ -208,12 +206,12 @@ def web_search(query: str, num_results: int = 3) -> str:
                                 results.append(f"   URL: {topic['FirstURL']}")
                             topics_added += 1
             
-            # If we got results, return them
+        
             if results:
                 header = f"Search results for '{clean_query}':\n"
                 return header + "\n".join(results)
         
-        # If all attempts failed, return simple message
+        # If all the search fails print the below
         return f"No results found for '{clean_query}'. DuckDuckGo's API did not return information for this topic. Try rephrasing your search with more specific terms."
            
     except requests.exceptions.Timeout:
